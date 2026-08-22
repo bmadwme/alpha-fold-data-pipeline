@@ -1,0 +1,67 @@
+{
+  "Comment": "AlphaFold pipeline: ingest -> crawl raw -> clean/partition -> crawl curated",
+  "StartAt": "IngestData",
+  "States": {
+    "IngestData": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "alphafold-ingest",
+        "Payload": { "uniprot_ids.$": "$.uniprot_ids" }
+      },
+      "ResultPath": "$.ingestResult",
+      "Next": "StartRawCrawler"
+    },
+    "StartRawCrawler": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:glue:startCrawler",
+      "Parameters": { "Name": "alphafold-raw-crawler" },
+      "ResultPath": null,
+      "Next": "WaitRawCrawler"
+    },
+    "WaitRawCrawler": { "Type": "Wait", "Seconds": 30, "Next": "CheckRawCrawler" },
+    "CheckRawCrawler": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:glue:getCrawler",
+      "Parameters": { "Name": "alphafold-raw-crawler" },
+      "ResultPath": "$.rawCrawlerStatus",
+      "Next": "IsRawCrawlerDone"
+    },
+    "IsRawCrawlerDone": {
+      "Type": "Choice",
+      "Choices": [
+        { "Variable": "$.rawCrawlerStatus.Crawler.State", "StringEquals": "READY", "Next": "RunCleanJob" }
+      ],
+      "Default": "WaitRawCrawler"
+    },
+    "RunCleanJob": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": { "JobName": "alphafold-clean-partition" },
+      "Next": "StartCuratedCrawler"
+    },
+    "StartCuratedCrawler": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:glue:startCrawler",
+      "Parameters": { "Name": "alphafold-curated-crawler" },
+      "ResultPath": null,
+      "Next": "WaitCuratedCrawler"
+    },
+    "WaitCuratedCrawler": { "Type": "Wait", "Seconds": 30, "Next": "CheckCuratedCrawler" },
+    "CheckCuratedCrawler": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:glue:getCrawler",
+      "Parameters": { "Name": "alphafold-curated-crawler" },
+      "ResultPath": "$.curatedCrawlerStatus",
+      "Next": "IsCuratedCrawlerDone"
+    },
+    "IsCuratedCrawlerDone": {
+      "Type": "Choice",
+      "Choices": [
+        { "Variable": "$.curatedCrawlerStatus.Crawler.State", "StringEquals": "READY", "Next": "Done" }
+      ],
+      "Default": "WaitCuratedCrawler"
+    },
+    "Done": { "Type": "Succeed" }
+  }
+}

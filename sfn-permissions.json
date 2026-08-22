@@ -1,0 +1,15 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["lambda:InvokeFunction"],
+      "Resource": "arn:aws:lambda:*:*:function:alphafold-ingest"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["glue:StartCrawler", "glue:GetCrawler", "glue:StartJobRun", "glue:GetJobRun"],
+      "Resource": "*"
+    }
+  ]
+}
