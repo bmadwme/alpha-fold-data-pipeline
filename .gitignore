@@ -1,3 +1,6 @@
 venv/
-.venv/
-env/
+__pycache__/
+function.zip
+proteome_ids.json
+response.json
+test.json
