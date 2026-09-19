@@ -32,7 +32,8 @@ graph LR
     H --> J
     I --> K[Lambda: alphafold-query-api]
     K --> L[API Gateway]
-    L --> M[Client]
+    L --> M[Dashboard: S3 static site]
+    M --> N[Browser]
 ```
 
 Data flows in five stages: a Lambda function pulls metadata from the AlphaFold 
@@ -202,8 +203,71 @@ aws lambda add-permission --function-name alphafold-query-api \
   --source-arn "arn:aws:execute-api:<REGION>:<ACCOUNT_ID>:<API_ID>/*/\$default"
 ```
 
-A real service would want an explicit route instead of catching everything
-on `$default`.
+Once the dashboard needed to call this cross-origin from a browser, `$default`
+turned out to be a bigger problem than just being loose: enabling CORS on the
+API and adding a real `GET /structures/lowest-confidence` route surfaced that
+`$default` also catches the CORS **preflight** `OPTIONS` request, which was
+landing on the Lambda and getting the same 400 an unparameterized GET would
+&mdash; and a non-2xx preflight makes the browser abort the real request before
+it's ever sent. Two fixes, both now in the repo:
+
+1. An explicit `GET /structures/lowest-confidence` route (needs its own
+   `add-permission` grant &mdash; a permission scoped to `$default` does not
+   cover it):
+   ```bash
+   aws apigatewayv2 create-route --api-id <API_ID> \
+     --route-key "GET /structures/lowest-confidence" \
+     --target "integrations/<INTEGRATION_ID>"
+   aws lambda add-permission --function-name alphafold-query-api \
+     --statement-id apigw-invoke-get-route --action lambda:InvokeFunction \
+     --principal apigateway.amazonaws.com \
+     --source-arn "arn:aws:execute-api:<REGION>:<ACCOUNT_ID>:<API_ID>/*/GET/structures/lowest-confidence"
+   ```
+2. The Lambda short-circuits `OPTIONS` and returns 200 immediately (see the
+   top of `handler()` in `query_api_function.py`), since the auto-managed
+   `$default` route created by `create-api --target` turned out to resist
+   deletion through the API entirely &mdash; still there, still catching
+   `OPTIONS`, so the handler has to cooperate rather than assume routing
+   alone keeps it away.
+
+## Dashboard
+
+A read-only chart-and-table view over the endpoint above, so the data is
+something you look at instead of something you curl:
+**[alphafold-confidence-dashboard-159275357043.s3-website-ap-southeast-2.amazonaws.com](http://alphafold-confidence-dashboard-159275357043.s3-website-ap-southeast-2.amazonaws.com)**
+
+It's a single static `web/index.html` (vanilla JS, no build step, no
+framework) that calls `alphafold-query-api` straight from the browser and
+renders the ranked bar chart + table live. The organism picker lists all
+12 organisms I expect to ingest, not just the 3 that exist today &mdash; the
+other 9 show as "Queued" and are disabled, so the UI demonstrates it scales past a handful
+of proteomes without pretending there's data behind entries that don't have any yet.
+
+It's hosted as its own S3 bucket with static website hosting and a
+public-read bucket policy scoped to just that bucket
+([`infra/dashboard/bucket-policy.json`](infra/dashboard/bucket-policy.json))
+&mdash; kept entirely separate from `alpha-lakehouse`, which stays private.
+Public buckets need their block-public-access setting turned off explicitly
+per-bucket (it's on by default), which is the one part of this whole project
+that's an actual security-relevant decision, not just a config step:
+
+```bash
+BUCKET=alphafold-confidence-dashboard-<ACCOUNT_ID>
+aws s3api create-bucket --bucket "$BUCKET" --region <REGION> \
+  --create-bucket-configuration LocationConstraint=<REGION>
+aws s3api put-public-access-block --bucket "$BUCKET" --public-access-block-configuration \
+  BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false
+aws s3api put-bucket-website --bucket "$BUCKET" --website-configuration \
+  '{"IndexDocument":{"Suffix":"index.html"},"ErrorDocument":{"Key":"index.html"}}'
+aws s3api put-bucket-policy --bucket "$BUCKET" --policy file://infra/dashboard/bucket-policy.json
+aws s3 cp web/index.html "s3://$BUCKET/index.html" --content-type "text/html; charset=utf-8"
+```
+
+Static credentials never touch this bucket or this page as it's plain
+HTML/JS reading a public, read-only API. A production version of this would
+put CloudFront + Origin Access Control in front instead of a public bucket,
+which keeps the bucket itself private; skipped here for build time, noted as
+a next step below.
 
 ## Running it yourself
 
@@ -213,8 +277,11 @@ in order — trust policies and permissions first, then deploy the Lambda and
 Glue job.
 
 ## What I'd build next
-- A small Streamlit dashboard sitting on top of `alphafold-query-api` instead
-  of hitting Athena directly
+- Ingest the other 9 organisms already listed (disabled) in the dashboard's
+  picker, and see how the E. coli-skewed partition-pruning numbers above
+  change once the table isn't 99.9% one organism
+- CloudFront + Origin Access Control in front of the dashboard bucket, so it
+  doesn't need to be a public S3 bucket at all
 - EventBridge scheduling, so the pipeline refreshes on its own instead of doing it manually
 - Infrastructure as code (CDK) so the whole thing is reproducible from a clean 
   AWS account

@@ -1,0 +1,607 @@
+<title>AlphaFold Confidence Explorer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Expanded:wght@600;700&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #F6F5FA;
+    --surface: #FFFFFF;
+    --surface-2: #EEECF5;
+    --surface-3: #E4E1F0;
+    --border: #DAD7E7;
+    --border-strong: #C3BFD9;
+    --text-primary: #1C1B29;
+    --text-secondary: #55536B;
+    --text-muted: #87859B;
+    --accent: #5B3DF5;
+    --accent-hover: #4A2ED1;
+    --accent-tint: #EDE9FE;
+    --accent-ink: #FFFFFF;
+
+    --tier-high: #2F5CE0;
+    --tier-high-tint: #E5EAFC;
+    --tier-mid: #00897A;
+    --tier-mid-tint: #DFF2EF;
+    --tier-low: #B93A1B;
+    --tier-low-tint: #FBE7E1;
+
+    --error: #B93A1B;
+    --error-tint: #FBE7E1;
+
+    --shadow-card: 0 1px 2px rgba(28, 27, 41, 0.04), 0 8px 24px -12px rgba(28, 27, 41, 0.12);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14132A;
+      --surface: #1C1A33;
+      --surface-2: #242140;
+      --surface-3: #2C2850;
+      --border: #34304F;
+      --border-strong: #443F66;
+      --text-primary: #F1EFFA;
+      --text-secondary: #B8B4CF;
+      --text-muted: #85809F;
+      --accent: #8B7BFF;
+      --accent-hover: #A79AFF;
+      --accent-tint: #2A2350;
+      --accent-ink: #14132A;
+
+      --tier-high: #4C6FEF;
+      --tier-high-tint: #232049;
+      --tier-mid: #0E9488;
+      --tier-mid-tint: #182D3F;
+      --tier-low: #C8481F;
+      --tier-low-tint: #2F2038;
+
+      --error: #C8481F;
+      --error-tint: #2F2038;
+
+      --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #14132A;
+    --surface: #1C1A33;
+    --surface-2: #242140;
+    --surface-3: #2C2850;
+    --border: #34304F;
+    --border-strong: #443F66;
+    --text-primary: #F1EFFA;
+    --text-secondary: #B8B4CF;
+    --text-muted: #85809F;
+    --accent: #8B7BFF;
+    --accent-hover: #A79AFF;
+    --accent-tint: #2A2350;
+    --accent-ink: #14132A;
+
+    --tier-high: #4C6FEF;
+    --tier-high-tint: #232049;
+    --tier-mid: #0E9488;
+    --tier-mid-tint: #182D3F;
+    --tier-low: #C8481F;
+    --tier-low-tint: #2F2038;
+
+    --error: #C8481F;
+    --error-tint: #2F2038;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 0 20px;
+    padding-block: 28px 56px;
+  }
+
+  .page { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+
+  .mono { font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace; }
+  .tabular { font-variant-numeric: tabular-nums; }
+
+  /* ---------- header ---------- */
+  header.top {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;
+  }
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; font-weight: 500; letter-spacing: 0.11em;
+    text-transform: uppercase; color: var(--text-muted); margin: 0 0 6px;
+  }
+  h1 {
+    font-family: 'Archivo Expanded', 'Archivo', sans-serif; font-weight: 700; font-size: clamp(26px, 4vw, 34px);
+    margin: 0 0 8px; letter-spacing: -0.01em; text-wrap: balance;
+  }
+  .lede {
+    color: var(--text-secondary); font-size: 15px; line-height: 1.55; max-width: 62ch; margin: 0;
+  }
+  .live-badge {
+    display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 100px;
+    border: 1px solid var(--border-strong); background: var(--surface); font-size: 12px; font-weight: 600;
+    color: var(--text-secondary); white-space: nowrap; flex-shrink: 0;
+  }
+  .live-badge .dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--tier-mid); flex-shrink: 0;
+    box-shadow: 0 0 0 3px var(--tier-mid-tint);
+  }
+
+  /* ---------- controls ---------- */
+  .controls {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px;
+    box-shadow: var(--shadow-card); display: flex; flex-direction: column; gap: 14px;
+  }
+  .controls-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label {
+    font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted);
+  }
+
+  /* combobox */
+  .combo { position: relative; width: 100%; max-width: 360px; }
+  .combo input {
+    width: 100%; font: inherit; font-size: 14.5px; padding: 10px 12px; border-radius: 9px;
+    border: 1px solid var(--border-strong); background: var(--bg); color: var(--text-primary);
+  }
+  .combo input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .combo-list {
+    position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 20; max-height: 280px; overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: var(--shadow-card);
+    padding: 5px; display: none;
+  }
+  .combo-list.open { display: block; }
+  .combo-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 7px;
+    cursor: pointer;
+  }
+  .combo-item:hover, .combo-item.active { background: var(--surface-2); }
+  .combo-item[aria-disabled="true"] { cursor: default; opacity: 0.55; }
+  .combo-item[aria-disabled="true"]:hover { background: transparent; }
+  .combo-item-name { display: flex; flex-direction: column; gap: 2px; }
+  .combo-item-name span.sci { font-size: 13.5px; font-weight: 500; }
+  .combo-item-name span.part { font-size: 11px; color: var(--text-muted); }
+  .tag {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.04em;
+    padding: 3px 7px; border-radius: 5px; text-transform: uppercase; flex-shrink: 0;
+  }
+  .tag.live { background: var(--tier-mid-tint); color: var(--tier-mid); }
+  .tag.queued { background: var(--surface-3); color: var(--text-muted); }
+
+  /* limit segmented control */
+  .segmented { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 9px; overflow: hidden; }
+  .segmented button {
+    font: inherit; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 500; padding: 9px 14px;
+    background: var(--bg); color: var(--text-secondary); border: none; border-right: 1px solid var(--border-strong);
+    cursor: pointer;
+  }
+  .segmented button:last-child { border-right: none; }
+  .segmented button:hover { background: var(--surface-2); }
+  .segmented button.active { background: var(--accent); color: var(--accent-ink); }
+
+  .endpoint-preview {
+    font-size: 12.5px; color: var(--text-secondary); background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 12px; overflow-x: auto; white-space: nowrap;
+  }
+  .endpoint-preview .verb { color: var(--tier-mid); font-weight: 600; margin-right: 8px; }
+  .endpoint-preview .muted { color: var(--text-muted); }
+
+  .toast { font-size: 12.5px; color: var(--text-secondary); min-height: 1.2em; }
+  .toast strong { color: var(--text-primary); }
+  .toast.error-text { color: var(--error); }
+
+  /* ---------- stat tiles ---------- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .stat {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 13px 15px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .stat .val {
+    font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 600; letter-spacing: -0.01em;
+  }
+  .stat .label { font-size: 12px; color: var(--text-muted); }
+
+  /* ---------- main grid ---------- */
+  .grid { display: grid; grid-template-columns: 1.1fr 1.4fr; gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-card);
+    padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 14px; position: relative; min-height: 160px;
+  }
+  .panel h2 {
+    font-size: 14px; font-weight: 700; margin: 0; display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel h2 .sub { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+  .panel.is-loading { opacity: 0.55; pointer-events: none; }
+
+  .state-message {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    padding: 32px 16px; text-align: center; color: var(--text-muted); font-size: 13px;
+  }
+  .state-message.error { color: var(--error); }
+  .state-message strong { color: var(--text-primary); font-size: 14px; }
+
+  /* ---------- bar chart ---------- */
+  .chart { position: relative; padding-top: 22px; }
+  .chart-scale { position: relative; height: 18px; margin-left: 132px; margin-bottom: 4px; }
+  .chart-scale .tick {
+    position: absolute; top: 0; font-size: 10.5px; color: var(--text-muted); transform: translateX(-50%);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .bar-rows { display: flex; flex-direction: column; gap: 8px; }
+  .bar-row { display: grid; grid-template-columns: 132px 1fr; align-items: center; gap: 10px; height: 26px; }
+  .bar-row .rowlabel {
+    font-size: 12.5px; color: var(--text-secondary); text-align: right; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bar-track { position: relative; height: 100%; background: var(--surface-2); border-radius: 5px; overflow: visible; }
+  .bar-track .gridline { position: absolute; top: -22px; bottom: 0; width: 1px; background: var(--border-strong); opacity: 0.6; }
+  .bar-fill {
+    position: absolute; top: 0; left: 0; bottom: 0; border-radius: 0 5px 5px 0; cursor: pointer;
+    transition: filter 0.12s ease;
+  }
+  .bar-fill:hover, .bar-fill:focus-visible { filter: brightness(1.08); outline: none; }
+  .bar-value {
+    position: absolute; top: 50%; transform: translateY(-50%); font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap;
+  }
+
+  .tooltip {
+    position: fixed; pointer-events: none; z-index: 50; background: var(--text-primary); color: var(--bg);
+    border-radius: 8px; padding: 10px 12px; font-size: 12px; line-height: 1.5; box-shadow: var(--shadow-card);
+    max-width: 230px; opacity: 0; transition: opacity 0.1s ease;
+  }
+  .tooltip.show { opacity: 1; }
+  .tooltip .t-title { font-weight: 700; margin-bottom: 3px; font-family: 'IBM Plex Mono', monospace; }
+  .tooltip .t-row { display: flex; justify-content: space-between; gap: 10px; opacity: 0.85; }
+
+  /* ---------- table ---------- */
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 480px; }
+  thead th {
+    text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--text-muted); padding: 0 10px 8px; border-bottom: 1px solid var(--border);
+  }
+  tbody td { padding: 9px 10px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface-2); }
+  td.accession a { color: var(--accent); text-decoration: none; font-weight: 500; }
+  td.accession a:hover { text-decoration: underline; }
+  td.score { font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
+  td.gene { color: var(--text-secondary); }
+  td.date, td.tool { color: var(--text-muted); font-size: 12px; }
+
+  .tier-badge {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 100px;
+    font-size: 11.5px; font-weight: 600;
+  }
+  .tier-badge .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .tier-badge.very_high { background: var(--tier-high-tint); color: var(--tier-high); }
+  .tier-badge.very_high .dot { background: var(--tier-high); }
+  .tier-badge.confident { background: var(--tier-mid-tint); color: var(--tier-mid); }
+  .tier-badge.confident .dot { background: var(--tier-mid); }
+  .tier-badge.low { background: var(--tier-low-tint); color: var(--tier-low); }
+  .tier-badge.low .dot { background: var(--tier-low); }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-item .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  footer.note {
+    font-size: 12.5px; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 16px; line-height: 1.6;
+  }
+  footer.note a { color: var(--text-secondary); }
+  footer.note code {
+    font-family: 'IBM Plex Mono', monospace; background: var(--surface-2); padding: 1px 5px; border-radius: 4px;
+    font-size: 11.5px; color: var(--text-secondary);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bar-fill, .tooltip { transition: none; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="top">
+    <div>
+      <p class="eyebrow">AlphaFold Lakehouse · Serving Layer</p>
+      <h1>Confidence Explorer</h1>
+      <p class="lede">Surfaces the lowest-confidence structure predictions for an organism &mdash; the ones most worth a second look before anything gets built on them.</p>
+    </div>
+    <div class="live-badge"><span class="dot"></span>Live &middot; alphafold-query-api</div>
+  </header>
+
+  <section class="controls">
+    <div class="controls-row">
+      <div class="field">
+        <label for="organism-input">Organism</label>
+        <div class="combo">
+          <input id="organism-input" type="text" autocomplete="off" placeholder="Search organisms&hellip;" aria-expanded="false" role="combobox">
+          <div class="combo-list" id="combo-list" role="listbox"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Limit</label>
+        <div class="segmented" id="limit-control">
+          <button type="button" data-limit="5">5</button>
+          <button type="button" data-limit="10" class="active">10</button>
+          <button type="button" data-limit="20">20</button>
+          <button type="button" data-limit="50">50</button>
+        </div>
+      </div>
+    </div>
+    <div class="endpoint-preview mono" id="endpoint-preview"></div>
+    <div class="toast" id="toast" aria-live="polite"></div>
+  </section>
+
+  <section class="stats" id="stats"></section>
+
+  <section class="grid">
+    <div class="panel" id="chart-panel">
+      <h2>Lowest pLDDT, ranked <span class="sub" id="chart-count"></span></h2>
+      <div class="chart">
+        <div class="chart-scale" id="chart-scale"></div>
+        <div class="bar-rows" id="bar-rows"></div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="panel" id="table-panel">
+      <h2>Structures <span class="sub">confidence_tier, tool, model date</span></h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Accession</th>
+              <th>Gene</th>
+              <th>pLDDT</th>
+              <th>Tier</th>
+              <th>Tool</th>
+              <th>Model date</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer class="note">
+    Live data from <code>alphafold-query-api</code>, an API Gateway + Lambda endpoint that runs an Athena query against the curated lakehouse table. Three organisms are ingested today (E. coli K-12, human, mouse); the rest in the picker are queued &mdash; they show how the UI holds up once ingestion scales past a handful of proteomes, without pretending there's data behind them yet.
+  </footer>
+
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+(function () {
+  const API_BASE = 'https://hehqe82epc.execute-api.ap-southeast-2.amazonaws.com';
+
+  const ORGANISMS = [
+    { id: 'Escherichia_coli__strain_K12_', sci: 'Escherichia coli (K-12)', status: 'live' },
+    { id: 'Homo_sapiens', sci: 'Homo sapiens', status: 'live' },
+    { id: 'Mus_musculus', sci: 'Mus musculus', status: 'live' },
+    { id: 'Saccharomyces_cerevisiae', sci: 'Saccharomyces cerevisiae', status: 'queued' },
+    { id: 'Drosophila_melanogaster', sci: 'Drosophila melanogaster', status: 'queued' },
+    { id: 'Danio_rerio', sci: 'Danio rerio', status: 'queued' },
+    { id: 'Arabidopsis_thaliana', sci: 'Arabidopsis thaliana', status: 'queued' },
+    { id: 'Caenorhabditis_elegans', sci: 'Caenorhabditis elegans', status: 'queued' },
+    { id: 'Rattus_norvegicus', sci: 'Rattus norvegicus', status: 'queued' },
+    { id: 'Bos_taurus', sci: 'Bos taurus', status: 'queued' },
+    { id: 'Gallus_gallus', sci: 'Gallus gallus', status: 'queued' },
+    { id: 'Xenopus_laevis', sci: 'Xenopus laevis', status: 'queued' },
+  ];
+
+  function tierLabel(t) { return t === 'very_high' ? 'Very high' : t === 'confident' ? 'Confident' : 'Low'; }
+  function tierVar(t) { return t === 'very_high' ? 'high' : t === 'confident' ? 'mid' : 'low'; }
+
+  const state = { organismId: 'Escherichia_coli__strain_K12_', limit: 10, requestSeq: 0 };
+
+  const input = document.getElementById('organism-input');
+  const comboList = document.getElementById('combo-list');
+  const toast = document.getElementById('toast');
+  const chartPanel = document.getElementById('chart-panel');
+  const tablePanel = document.getElementById('table-panel');
+
+  function currentOrganism() { return ORGANISMS.find(o => o.id === state.organismId); }
+
+  function renderComboList(filterText) {
+    const q = (filterText || '').trim().toLowerCase();
+    const items = ORGANISMS.filter(o => o.sci.toLowerCase().includes(q));
+    comboList.innerHTML = '';
+    if (!items.length) {
+      const empty = document.createElement('div');
+      empty.className = 'combo-item';
+      empty.setAttribute('aria-disabled', 'true');
+      empty.textContent = 'No organisms match "' + filterText + '"';
+      comboList.appendChild(empty);
+      return;
+    }
+    items.forEach(o => {
+      const row = document.createElement('div');
+      row.className = 'combo-item';
+      row.setAttribute('role', 'option');
+      const disabled = o.status !== 'live';
+      if (disabled) row.setAttribute('aria-disabled', 'true');
+      row.innerHTML =
+        '<span class="combo-item-name"><span class="sci">' + o.sci + '</span>' +
+        '<span class="part mono">organism=' + o.id + '</span></span>' +
+        '<span class="tag ' + (disabled ? 'queued' : 'live') + '">' + (disabled ? 'Queued' : 'Live') + '</span>';
+      row.addEventListener('click', () => {
+        if (disabled) {
+          toast.classList.remove('error-text');
+          toast.innerHTML = '<strong>' + o.sci + '</strong> isn’t ingested yet — next batch adds it.';
+          return;
+        }
+        state.organismId = o.id;
+        input.value = o.sci;
+        toast.textContent = '';
+        closeCombo();
+        loadAndRender();
+      });
+      comboList.appendChild(row);
+    });
+  }
+
+  function openCombo() { comboList.classList.add('open'); input.setAttribute('aria-expanded', 'true'); }
+  function closeCombo() { comboList.classList.remove('open'); input.setAttribute('aria-expanded', 'false'); }
+
+  input.addEventListener('focus', () => { renderComboList(''); input.select(); openCombo(); });
+  input.addEventListener('input', () => renderComboList(input.value));
+  document.addEventListener('click', (e) => { if (!e.target.closest('.combo')) closeCombo(); });
+
+  document.getElementById('limit-control').addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    document.querySelectorAll('#limit-control button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.limit = parseInt(btn.dataset.limit, 10);
+    loadAndRender();
+  });
+
+  const tooltip = document.getElementById('tooltip');
+  function showTooltip(evt, rec, organism) {
+    tooltip.innerHTML =
+      '<div class="t-title">' + rec.acc + (rec.gene ? ' &middot; ' + rec.gene : '') + '</div>' +
+      '<div class="t-row"><span>organism</span><span>' + organism.sci + '</span></div>' +
+      '<div class="t-row"><span>pLDDT</span><span>' + rec.score.toFixed(2) + '</span></div>' +
+      '<div class="t-row"><span>tier</span><span>' + tierLabel(rec.tier) + '</span></div>' +
+      '<div class="t-row"><span>tool</span><span>' + rec.tool + '</span></div>';
+    tooltip.classList.add('show');
+    positionTooltip(evt);
+  }
+  function positionTooltip(evt) {
+    const pad = 14;
+    let x = evt.clientX + pad, y = evt.clientY + pad;
+    const rect = tooltip.getBoundingClientRect();
+    if (x + rect.width > window.innerWidth - 8) x = evt.clientX - rect.width - pad;
+    if (y + rect.height > window.innerHeight - 8) y = evt.clientY - rect.height - pad;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+  }
+  function hideTooltip() { tooltip.classList.remove('show'); }
+
+  function setLoading(isLoading) {
+    chartPanel.classList.toggle('is-loading', isLoading);
+    tablePanel.classList.toggle('is-loading', isLoading);
+  }
+
+  function showEmptyState(message, isError) {
+    const html = '<div class="state-message' + (isError ? ' error' : '') + '"><strong>' +
+      (isError ? 'Query failed' : 'No results') + '</strong><span>' + message + '</span></div>';
+    document.getElementById('bar-rows').innerHTML = html;
+    document.getElementById('table-body').innerHTML = '<tr><td colspan="6">' + html + '</td></tr>';
+    document.getElementById('chart-scale').innerHTML = '';
+    document.getElementById('legend').innerHTML = '';
+  }
+
+  async function loadAndRender() {
+    const organism = currentOrganism();
+    const mySeq = ++state.requestSeq;
+
+    document.getElementById('endpoint-preview').innerHTML =
+      '<span class="verb">GET</span>/structures/lowest-confidence<span class="muted">?organism=</span>' + organism.id +
+      '<span class="muted">&amp;limit=</span>' + state.limit;
+
+    setLoading(true);
+    toast.textContent = '';
+
+    let payload, res;
+    try {
+      res = await fetch(API_BASE + '/structures/lowest-confidence?organism=' +
+        encodeURIComponent(organism.id) + '&limit=' + state.limit);
+      payload = await res.json();
+    } catch (err) {
+      if (mySeq !== state.requestSeq) return;
+      setLoading(false);
+      showEmptyState('Couldn’t reach the API — check your connection and try again.', true);
+      toast.classList.add('error-text');
+      toast.textContent = String(err);
+      return;
+    }
+    if (mySeq !== state.requestSeq) return; // a newer request superseded this one
+    setLoading(false);
+
+    if (!res.ok) {
+      showEmptyState(payload.error || (res.status + ' error'), true);
+      return;
+    }
+
+    const sorted = (payload.results || []).map(r => ({
+      acc: r.uniprot_accession,
+      gene: r.gene,
+      score: parseFloat(r.global_metric_value),
+      tier: r.confidence_tier,
+      tool: r.tool_used,
+      date: (r.model_created_date || '').slice(0, 10),
+    }));
+
+    if (!sorted.length) {
+      showEmptyState('No structures found for ' + organism.sci + '.', false);
+      document.getElementById('stats').innerHTML = '';
+      document.getElementById('chart-count').textContent = '0 shown';
+      return;
+    }
+
+    document.getElementById('chart-count').textContent = sorted.length + ' shown';
+
+    const liveCount = ORGANISMS.filter(o => o.status === 'live').length;
+    document.getElementById('stats').innerHTML = [
+      { val: sorted.length, label: 'Records in view' },
+      { val: sorted[0].score.toFixed(2), label: 'Lowest pLDDT in view' },
+      { val: liveCount + ' / ' + ORGANISMS.length, label: 'Organisms ingested' },
+    ].map(s => '<div class="stat"><div class="val tabular">' + s.val + '</div><div class="label">' + s.label + '</div></div>').join('');
+
+    const ticks = [0, 50, 70, 90, 100];
+    document.getElementById('chart-scale').innerHTML = ticks.map(t =>
+      '<span class="tick" style="left:' + t + '%">' + t + '</span>').join('');
+
+    const barRows = document.getElementById('bar-rows');
+    barRows.innerHTML = '';
+    sorted.forEach(rec => {
+      const row = document.createElement('div');
+      row.className = 'bar-row';
+      const gridlines = ticks.slice(1, -1).map(t => '<div class="gridline" style="left:' + t + '%"></div>').join('');
+      row.innerHTML =
+        '<div class="rowlabel mono">' + (rec.gene || rec.acc) + '</div>' +
+        '<div class="bar-track">' + gridlines +
+          '<div class="bar-fill" tabindex="0" style="width:' + rec.score + '%; background:var(--tier-' + tierVar(rec.tier) + ')"></div>' +
+          '<span class="bar-value" style="left:calc(' + rec.score + '% + 8px)">' + rec.score.toFixed(1) + '</span>' +
+        '</div>';
+      const fill = row.querySelector('.bar-fill');
+      fill.addEventListener('mousemove', (e) => showTooltip(e, rec, organism));
+      fill.addEventListener('mouseenter', (e) => showTooltip(e, rec, organism));
+      fill.addEventListener('mouseleave', hideTooltip);
+      fill.addEventListener('focus', (e) => showTooltip(e, rec, organism));
+      fill.addEventListener('blur', hideTooltip);
+      barRows.appendChild(row);
+    });
+
+    document.getElementById('legend').innerHTML = [
+      ['Very high (≥90)', 'high'],
+      ['Confident (70–89)', 'mid'],
+      ['Low (<70)', 'low'],
+    ].map(([label, varName]) =>
+      '<span class="legend-item"><span class="dot" style="background:var(--tier-' + varName + ')"></span>' + label + '</span>'
+    ).join('');
+
+    document.getElementById('table-body').innerHTML = sorted.map(rec =>
+      '<tr>' +
+        '<td class="accession mono"><a href="https://alphafold.ebi.ac.uk/entry/' + rec.acc + '" target="_blank" rel="noopener">' + rec.acc + '</a></td>' +
+        '<td class="gene">' + (rec.gene || '—') + '</td>' +
+        '<td class="score tabular">' + rec.score.toFixed(2) + '</td>' +
+        '<td><span class="tier-badge ' + rec.tier + '"><span class="dot"></span>' + tierLabel(rec.tier) + '</span></td>' +
+        '<td class="tool">' + rec.tool + '</td>' +
+        '<td class="date mono">' + rec.date + '</td>' +
+      '</tr>'
+    ).join('');
+  }
+
+  input.value = currentOrganism().sci;
+  loadAndRender();
+})();
+</script>

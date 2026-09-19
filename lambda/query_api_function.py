@@ -70,6 +70,14 @@ def respond(status_code, body):
 
 
 def handler(event, context):
+    # The API's $default route catches CORS preflight too, so the browser's
+    # OPTIONS request lands here rather than being short-circuited by API
+    # Gateway. Answer it directly instead of falling through to param
+    # validation, which would 400 every preflight and block the real request.
+    method = event.get("requestContext", {}).get("http", {}).get("method", "GET")
+    if method == "OPTIONS":
+        return respond(200, {})
+
     params = event.get("queryStringParameters") or {}
 
     organism_raw = params.get("organism")
