@@ -1,6 +1,7 @@
 venv/
 __pycache__/
 function.zip
+*.zip
 proteome_ids.json
 response.json
 test.json
